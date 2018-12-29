@@ -1,25 +1,84 @@
 module Lib
-    (
-    run, buildTree, rank, select
-    ) where
 
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"
+where
 
-type WaveletTree = ()
+-- string  = "abcdbcaddbca"
 
+import Data.List
+import qualified Data.Set as Set
+import qualified Data.Map.Strict as Map
+import qualified Data.Vector as Vector -- todo: swap for succinct vector
+
+import Debug.Trace
+
+string = "abcdbcaddbca"
+
+{-
+alphabet = {a, b, c, d}
+index    = {0, 0, 1, 1}
+                    11
+ix      = 012345678901
+string  = abcdbcaddbca
+
+index0  = 001101011010
+stringl = abbaba
+stringr =       cdcddc
+index1l = 011010
+index1r =       010110
+string  = aaabbb
+                cccddd
+
+rank(7, c) ->
+    level 0 = 4 1s
+    level 1 = 2 0s
+-}
+
+
+data WTree = Leaf Char | Tree { left :: WTree
+                             , right :: WTree
+                             , index :: Vector.Vector Bool
+                             , alphabet :: Map.Map Char Bool
+                             } deriving (Show, Eq)
+s
 run :: String
 run = undefined
 
+getCharSet :: String -> Set.Set Char
+getCharSet = Set.fromList . nub . sort
 
-buildTree :: String -> WaveletTree
-buildTree = undefined
+buildTree :: String -> WTree
+buildTree "" = error "empty tree"
+buildTree string
+  | length charSet == 1 = Leaf $ Set.findMin charSet
+  where charSet = getCharSet string
+buildTree string = Tree (buildTree left) (buildTree right) index alphabet
+  where alphabet = buildAlphabet $ getCharSet string
+        index = Vector.fromList $ map (alphabet Map.!) string
+        left = filter (\c -> not (alphabet Map.! c)) string
+        right = filter (\c -> alphabet Map.! c) string
+
+buildAlphabet :: Set.Set Char -> Map.Map Char Bool
+buildAlphabet input = Map.fromList $ zip (Set.toList input) (zeros ++ ones)
+  where
+    len = length input
+    zeros = replicate (div len 2) False
+    ones = replicate (len - length zeros) True
+
 
 -- rank tree (select tree j char) char === j
 -- returns the number of chars at or before idx
-rank :: WaveletTree -> Int -> Char -> Int
-rank tree idx char = undefined
+rank :: WTree -> Int -> Char -> Int
+rank (Leaf _) _ _ = error "leaves dont have rank"
+rank tree i char
+  | (Leaf _) <- left tree,  not direction = nextI
+  | (Leaf _) <- right tree, direction     = nextI
+  | not direction = rank (left tree)  nextI char
+  | otherwise     = rank (right tree) nextI char
+  where
+        direction = alphabet tree Map.! char
+        nextI = length $ Vector.filter (\c -> direction == c)
+                       $ Vector.take (i+1) $ index tree
 
 -- returns the index of the "occNumber"th occurance of the char
-select :: WaveletTree -> Int -> Char -> Int
+select :: WTree -> Int -> Char -> Int
 select tree occNumber char = undefined
