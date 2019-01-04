@@ -39,7 +39,7 @@ data WTree = Leaf Char | Tree { left :: WTree
                              , index :: Vector.Vector Bool
                              , alphabet :: Map.Map Char Bool
                              } deriving (Show, Eq)
-s
+
 run :: String
 run = undefined
 
@@ -76,9 +76,39 @@ rank tree i char
   | otherwise     = rank (right tree) nextI char
   where
         direction = alphabet tree Map.! char
-        nextI = length $ Vector.filter (\c -> direction == c)
-                       $ Vector.take (i+1) $ index tree
+        nextI = rankI direction (index tree) i
 
--- returns the index of the "occNumber"th occurance of the char
+-- rankI False index (selectI False index j) === j
+-- The number of True/False at or before idx
+-- TODO replace with succinct bitvector implementation
+rankI :: Bool -> Vector.Vector Bool -> Int -> Int
+rankI b index i = length $ Vector.filter (==b) $ Vector.take (i+1) index
+
+-- selectI False index (rankI False index j) === j
+-- The ith True/False in the bitvector
+-- TODO replace with succinct bitvector implementation
+selectI :: Bool -> Vector.Vector Bool -> Int -> Int
+selectI b index i = max 0 $ found - 1
+  where
+    Just found = Vector.elemIndex i counts
+    counts     = Vector.scanl (\acc el -> if el == b then acc+1 else acc) 0 index
+
+constructPath' :: WTree -> Char -> [(Bool, Vector.Vector Bool)] -> [(Bool, Vector.Vector Bool)]
+constructPath' (Leaf c) char acc | char /= c = error "constructPath: wrong way!"
+constructPath' (Leaf c) char acc | char == c = acc
+constructPath' (Tree l r i a) c acc = constructPath' next c acc'
+  where
+    direction = a Map.! c
+    next = if direction then r else l
+    acc' = (direction, i):acc
+
+constructPath :: WTree -> Char -> [(Bool, Vector.Vector Bool)]
+constructPath t c = constructPath' t c []
+
+selectRec :: Int -> [(Bool, Vector.Vector Bool)] -> Int
+selectRec i [] = max 0 $ i - 1
+selectRec i ((dir, vec):xs) = selectRec (selectI dir vec i + 1) xs
+
+-- returns the index of the "occNumber"th occurrence of the char
 select :: WTree -> Int -> Char -> Int
-select tree occNumber char = undefined
+select tree occNumber char = selectRec occNumber (constructPath tree char)
