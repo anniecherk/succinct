@@ -8,12 +8,34 @@ import Data.List
 import qualified Data.Set as Set
 import qualified Data.Map.Strict as Map
 import qualified Data.Vector as Vector -- todo: swap for succinct vector
+import Data.List.Split
+
+import qualified Data.Vector.Storable as S
 
 import Debug.Trace
+
+import Data.Word (Word64)
+
+import qualified HaskellWorks.Data.RankSelect.Base as RS
 
 string = "abcdbcaddbca"
 
 {-
+
+t = buildTree string
+λ: select t 3 'a'
+11
+λ: string
+"abcdbcaddbca"
+λ: select t 2 'a'
+6
+λ: select t 1 'a'
+0
+λ: select t 1 'b'
+1
+λ: select t 1 'c'
+2
+
 alphabet = {a, b, c, d}
 index    = {0, 0, 1, 1}
                     11
@@ -34,11 +56,18 @@ rank(7, c) ->
 -}
 
 
+toWord64 :: [Bool] -> [Word64]
+toWord64 x = map getInt $ chunksOf 64 x
+  where integerize (pow, acc) b = (pow+1 , if b then acc+(2^pow) else acc)
+        getInt = snd . foldl' integerize (0, 0)
+
+
+
 data WTree = Leaf Char | Tree { left :: WTree
                              , right :: WTree
-                             , index :: Vector.Vector Bool
+                             , index :: S.Vector Word64
                              , alphabet :: Map.Map Char Bool
-                             } deriving (Show, Eq)
+                             } deriving (Show) --,Eq)
 
 run :: String
 run = undefined
@@ -53,7 +82,7 @@ buildTree string
   where charSet = getCharSet string
 buildTree string = Tree (buildTree left) (buildTree right) index alphabet
   where alphabet = buildAlphabet $ getCharSet string
-        index = Vector.fromList $ map (alphabet Map.!) string
+        index = S.fromList $ toWord64 $ map (alphabet Map.!) string
         left = filter (\c -> not (alphabet Map.! c)) string
         right = filter (\c -> alphabet Map.! c) string
 
@@ -67,7 +96,7 @@ buildAlphabet input = Map.fromList $ zip (Set.toList input) (zeros ++ ones)
 
 -- rank tree (select tree j char) char === j
 -- returns the number of chars at or before idx
-rank :: WTree -> Int -> Char -> Int
+rank :: WTree -> Word64 -> Char -> Word64
 rank (Leaf _) _ _ = error "leaves dont have rank"
 rank tree i char
   | (Leaf _) <- left tree,  not direction = nextI
@@ -81,19 +110,20 @@ rank tree i char
 -- rankI False index (selectI False index j) === j
 -- The number of True/False at or before idx
 -- TODO replace with succinct bitvector implementation
-rankI :: Bool -> Vector.Vector Bool -> Int -> Int
-rankI b index i = length $ Vector.filter (==b) $ Vector.take (i+1) index
+rankI :: Bool -> S.Vector Word64 -> Word64 -> Word64
+rankI False index i = RS.rank0 index i
+rankI True  index i = RS.rank1 index i
+
 
 -- selectI False index (rankI False index j) === j
 -- The ith True/False in the bitvector
 -- TODO replace with succinct bitvector implementation
-selectI :: Bool -> Vector.Vector Bool -> Int -> Int
-selectI b index i = max 0 $ found - 1
-  where
-    Just found = Vector.elemIndex i counts
-    counts     = Vector.scanl (\acc el -> if el == b then acc+1 else acc) 0 index
+selectI :: Bool -> S.Vector Word64 -> Word64 -> Word64
+selectI False index i = RS.select0 index i
+selectI True  index i = RS.select1 index i
 
-constructPath' :: WTree -> Char -> [(Bool, Vector.Vector Bool)] -> [(Bool, Vector.Vector Bool)]
+
+constructPath' :: WTree -> Char -> [(Bool, S.Vector Word64)] -> [(Bool, S.Vector Word64)]
 constructPath' (Leaf c) char acc | char /= c = error "constructPath: wrong way!"
 constructPath' (Leaf c) char acc | char == c = acc
 constructPath' (Tree l r i a) c acc = constructPath' next c acc'
@@ -102,13 +132,13 @@ constructPath' (Tree l r i a) c acc = constructPath' next c acc'
     next = if direction then r else l
     acc' = (direction, i):acc
 
-constructPath :: WTree -> Char -> [(Bool, Vector.Vector Bool)]
+constructPath :: WTree -> Char -> [(Bool, S.Vector Word64)]
 constructPath t c = constructPath' t c []
 
-selectRec :: Int -> [(Bool, Vector.Vector Bool)] -> Int
-selectRec i [] = max 0 $ i - 1
-selectRec i ((dir, vec):xs) = selectRec (selectI dir vec i + 1) xs
+selectRec :: Word64 -> [(Bool, S.Vector Word64)] -> Word64
+selectRec i [] = max 0 $ i - 1 -- correct 1-based indexing to be 0-based
+selectRec i ((dir, vec):xs) = selectRec (selectI dir vec i) xs
 
 -- returns the index of the "occNumber"th occurrence of the char
-select :: WTree -> Int -> Char -> Int
+select :: WTree -> Word64 -> Char -> Word64
 select tree occNumber char = selectRec occNumber (constructPath tree char)

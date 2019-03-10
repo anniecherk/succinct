@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 45dd5c6c07283d8a16f79a76bcf2c1541925fa89f8973537e64376f5a8a66de5
+-- hash: 53ac6061f30c96bd25acb9892f39218a29b1805e77f6ddf4dadbf391c1341709
 
 name:           succinct
 version:        0.1.0.0
@@ -35,6 +35,8 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
+    , hw-rankselect-base
+    , split
     , vector
   default-language: Haskell2010
 
@@ -48,6 +50,8 @@ executable succinct-exe
   build-depends:
       base >=4.7 && <5
     , containers
+    , hw-rankselect-base
+    , split
     , succinct
     , vector
   default-language: Haskell2010
@@ -63,6 +67,8 @@ test-suite succinct-test
   build-depends:
       base >=4.7 && <5
     , containers
+    , hw-rankselect-base
+    , split
     , succinct
     , vector
   default-language: Haskell2010
