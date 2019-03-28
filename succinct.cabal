@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 53ac6061f30c96bd25acb9892f39218a29b1805e77f6ddf4dadbf391c1341709
+-- hash: a0acfae03be81736268bc0de71c563a5f472bddd18639aa982232b34d231e496
 
 name:           succinct
 version:        0.1.0.0
@@ -35,6 +35,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
+    , hw-rankselect
     , hw-rankselect-base
     , split
     , vector
@@ -50,6 +51,7 @@ executable succinct-exe
   build-depends:
       base >=4.7 && <5
     , containers
+    , hw-rankselect
     , hw-rankselect-base
     , split
     , succinct
@@ -67,6 +69,7 @@ test-suite succinct-test
   build-depends:
       base >=4.7 && <5
     , containers
+    , hw-rankselect
     , hw-rankselect-base
     , split
     , succinct

@@ -25,6 +25,7 @@ dependencies:
 - vector
 - split
 - hw-rankselect-base
+- hw-rankselect
 
 library:
   source-dirs: src
