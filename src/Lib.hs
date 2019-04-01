@@ -17,7 +17,7 @@ import Debug.Trace
 import Data.Word (Word64)
 
 import qualified HaskellWorks.Data.RankSelect.Base as RS
-import qualified HaskellWorks.Data.RankSelect.Poppy512 as CP
+import qualified HaskellWorks.Data.RankSelect.CsPoppy as CP
 
 string = "abcdbcaddbca"
 
@@ -66,7 +66,7 @@ toWord64 x = map getInt $ chunksOf 64 x
 
 data WTree = Leaf Char | Tree { left :: WTree
                              , right :: WTree
-                             , index :: CP.Poppy512--S.Vector Word64
+                             , index :: CP.CsPoppy--S.Vector Word64
                              , alphabet :: Map.Map Char Bool
                              } deriving (Show) --,Eq)
 
@@ -83,7 +83,7 @@ buildTree string
   where charSet = getCharSet string
 buildTree string = Tree (buildTree left) (buildTree right) index alphabet
   where alphabet = buildAlphabet $ getCharSet string
-        index = CP.makePoppy512 $ S.fromList $ toWord64 $ map (alphabet Map.!) string
+        index = CP.makeCsPoppy $ S.fromList $ toWord64 $ map (alphabet Map.!) string
         left = filter (\c -> not (alphabet Map.! c)) string
         right = filter (\c -> alphabet Map.! c) string
 
@@ -111,7 +111,7 @@ rank tree i char
 -- rankI False index (selectI False index j) === j
 -- The number of True/False at or before idx
 -- TODO replace with succinct bitvector implementation
-rankI :: Bool -> CP.Poppy512 -> Word64 -> Word64
+rankI :: Bool -> CP.CsPoppy -> Word64 -> Word64
 rankI False index i = RS.rank0 index i
 rankI True  index i = RS.rank1 index i
 
@@ -119,12 +119,12 @@ rankI True  index i = RS.rank1 index i
 -- selectI False index (rankI False index j) === j
 -- The ith True/False in the bitvector
 -- TODO replace with succinct bitvector implementation
-selectI :: Bool -> CP.Poppy512 -> Word64 -> Word64
+selectI :: Bool -> CP.CsPoppy -> Word64 -> Word64
 selectI False index i = RS.select0 index i
 selectI True  index i = RS.select1 index i
 
 
-constructPath' :: WTree -> Char -> [(Bool, CP.Poppy512)] -> [(Bool, CP.Poppy512)]
+constructPath' :: WTree -> Char -> [(Bool, CP.CsPoppy)] -> [(Bool, CP.CsPoppy)]
 constructPath' (Leaf c) char acc | char /= c = error "constructPath: wrong way!"
 constructPath' (Leaf c) char acc | char == c = acc
 constructPath' (Tree l r i a) c acc = constructPath' next c acc'
@@ -133,10 +133,10 @@ constructPath' (Tree l r i a) c acc = constructPath' next c acc'
     next = if direction then r else l
     acc' = (direction, i):acc
 
-constructPath :: WTree -> Char -> [(Bool, CP.Poppy512)]
+constructPath :: WTree -> Char -> [(Bool, CP.CsPoppy)]
 constructPath t c = constructPath' t c []
 
-selectRec :: Word64 -> [(Bool, CP.Poppy512)] -> Word64
+selectRec :: Word64 -> [(Bool, CP.CsPoppy)] -> Word64
 selectRec i [] = max 0 $ i - 1 -- correct 1-based indexing to be 0-based
 selectRec i ((dir, vec):xs) = selectRec (selectI dir vec i) xs
 

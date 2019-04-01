@@ -38,6 +38,7 @@ packages:
 # using the same syntax as the packages field.
 # (e.g., acme-missiles-0.3)
 extra-deps:
+  - hw-rankselect-0.13.0.0
   # - git: https://github.com/Gabriel439/Haskell-Succinct-Vector-Library.git
   #   commit: 9538eb47a34905136fad79497f9539ffc1db3239
 
